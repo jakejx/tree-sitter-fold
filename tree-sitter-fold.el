@@ -42,11 +42,14 @@
   '((python-mode . [((function_definition) @function_definition) ((class_definition) @class_definition)])
     (ess-r-mode . [((brace_list) @brace_list)])
     (nix-mode . [((attrset) @attrset) ((function) @function)])
-    (scala-mode . [(((package_clause) (comment)* \. (import_declaration) @imports))])
-    (go-mode . [(((package_clause) (comment)* \. (import_declaration) @imports))
+    (scala-mode . [([(class_definition) (object_definition) (trait_definition) (function_definition)] @definition)
+		   ((package_clause) (comment)* \. (import_declaration) @imports)
+		   ])
+    (go-mode . [
 		((type_declaration) @type_declaration)
 		((function_declaration) @function_declaration)
 		((method_declaration) @method_declaration)
+		((package_clause) (comment)* \. (import_declaration) @imports)
 		]))
   "An alist of (mode . (vector of tree-sitter query sexps that are foldable.))"
   :type '(alist :key-type symbol :value-type (vector sexp))
@@ -58,7 +61,8 @@
     (ess-r-mode . ((brace_list . tree-sitter-fold-range-r)))
     (nix-mode . ((attrset . tree-sitter-fold-range-nix-attrset)
                  (function . tree-sitter-fold-range-nix-function)))
-    (scala-mode . ((imports . tree-sitter-fold-range-scala-imports)))
+    (scala-mode . ((imports . tree-sitter-fold-range-scala-imports)
+		   (definition . tree-sitter-fold-range-scala-definition)))
     (go-mode . ((imports . tree-sitter-fold-range-go-imports)
 		(type_declaration . tree-sitter-fold-range-go-type-declaration)
                 (function_declaration . tree-sitter-fold-range-go-method)
@@ -127,7 +131,8 @@ the fold in a cons cell.  See `tree-sitter-fold-range-python' for an example."
 		 (found (> (length captures) 0)))
 	    (setq result (aref captures 0)
 		  current nil)
-	  (setq current (tsc-get-parent current))))
+	  (setq current (tsc-get-parent current))
+	  (tsc-node-to-sexp current)))
       (or result (user-error "No foldable node found at POS")))))
 
 (defun tree-sitter-fold--get-fold-range (node)
@@ -326,6 +331,12 @@ If the current syntax node is not foldable, do nothing."
 	(setq end (tsc-node-end-position current)
 	      current nil)))
     (cons beg end)))
+
+(defun tree-sitter-fold-range-scala-definition (node)
+  (tree-sitter-fold--range-with-query [(object_definition body: (_) @body)
+				       (class_definition body: (_) @body)
+				       (trait_definition body: (_) @body)
+				       (function_definition body: (_) @body)]))
 
 (provide 'tree-sitter-fold)
 ;;; tree-sitter-fold.el ends here
